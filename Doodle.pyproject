@@ -1,0 +1,10 @@
+{
+    "files": [
+        "config.py",
+        "inputbox.py",
+        "locations.py",
+        "main.py",
+        "sprites.py",
+        "tests.py"
+    ]
+}
