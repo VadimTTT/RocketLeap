@@ -33,9 +33,8 @@ def ask(screen, question, font_size=24, font_color=(255, 255, 255), box_color=(0
                 else:
                     input_text += event.unicode
 
-        screen.fill((0, 0, 0))  # Optional: dim background
+        screen.fill((0, 0, 0))
 
-        # Render box and text
         pygame.draw.rect(screen, box_color, input_rect)
         pygame.draw.rect(screen, active_color, input_rect, 2)
 

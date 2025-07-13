@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pygame
 from pygame.locals import *
-from sprites import Doodle, Platform, MovingPlatform, CrashingPlatform, Rectangle, Button, TextSprite, Spring, Monster, Star
+from sprites import Doodle, Platform, MovingPlatform, CrashingPlatform, Rectangle, Button, TextSprite, Spring, Monster, Star, CharacterSelectButton
 import sys
 from random import randint
 import inputbox
@@ -24,46 +24,109 @@ class StartLocation(Location):
         Location.__init__(self, parent)
         pygame.mouse.set_visible(1)
         pygame.key.set_repeat(0)
-        self.startbtn = Button(240, 200, "Start")
-        self.exitbtn = Button(240, 270, "Exit")
-        self.controls = pygame.sprite.Group()
-        self.surfaces = []
-        self.controls_captions = pygame.sprite.Group()
-        self.controls_captions.add(self.startbtn.textSprite)
-        self.controls_captions.add(self.exitbtn.textSprite)
-        self.controls.add(self.startbtn)
-        self.controls.add(self.exitbtn)
-        self.window.blit(self.background, (0, 0))
-
+        
+        self.available_characters = [
+            'img/rocket3.png',
+            'img/character1.png', 
+            'img/character2.png'
+        ]
+        self.selected_character = self.available_characters[0]
+        
+        self.title = TextSprite(
+            screen_width // 2,
+            50,
+            "Rocket Leap",
+            72,
+            (255, 215, 0) 
+        )
+        
+        self.char_positions = [
+            (screen_width * 1/4, 200), 
+            (screen_width * 2/4, 200),  
+            (screen_width * 3/4, 200)
+        ]
+        
+        self.char_buttons = []
+        for i, char_img in enumerate(self.available_characters):
+            btn = CharacterSelectButton(
+                self.char_positions[i][0],
+                self.char_positions[i][1],
+                char_img
+            )
+            self.char_buttons.append(btn)
+        
+        self.startbtn = Button(screen_width//2, 320, "Start")
+        self.exitbtn = Button(screen_width//2, 390, "Exit")
+        
+        self.controls = pygame.sprite.Group(self.startbtn, self.exitbtn)
+        self.controls_captions = pygame.sprite.Group(
+            self.startbtn.textSprite,
+            self.exitbtn.textSprite
+        )
+        
+        self.selection_surface = pygame.Surface((140, 160), pygame.SRCALPHA)
+        pygame.draw.rect(self.selection_surface, (255, 215, 0), (0, 0, 140, 160), 3)
+        
+        self.selection_pos = self.char_positions[0]
+    
     def draw(self):
-        self.controls.clear(self.window, self.background)
+        self.window.blit(self.background, (0, 0))
+        self.window.blit(self.title.image, self.title.rect)
+        choose_text = TextSprite(
+            screen_width//2, 
+            105,
+            "Выберите персонажа",
+            30,
+            (255, 255, 255)
+        )
+        self.window.blit(choose_text.image, choose_text.rect)
+        frame_x = self.selection_pos[0] - 70  # 140/2
+        frame_y = self.selection_pos[1] - 80  # 160/2
+        self.window.blit(self.selection_surface, (frame_x, frame_y))
+        
+        for btn in self.char_buttons:
+            char_x = btn.rect.centerx - btn.character_image.get_width() // 2
+            char_y = btn.rect.centery - btn.character_image.get_height() // 2
+            self.window.blit(btn.character_image, (char_x, char_y))
+        
         self.controls.draw(self.window)
         self.controls_captions.draw(self.window)
-
-    def event(self,event):
+    
+    def event(self, event):
         if event.type == MOUSEMOTION:
             for btn in self.controls:
                 if btn.rect.collidepoint(pygame.mouse.get_pos()):
                     btn.changeState(1)
                 else:
                     btn.changeState(0)
+        
         elif event.type == MOUSEBUTTONUP:
+            for i, btn in enumerate(self.char_buttons):
+                if btn.full_rect.collidepoint(pygame.mouse.get_pos()):
+                    self.selected_character = btn.character_img
+                    self.selection_pos = self.char_positions[i]
+            
             if self.startbtn.rect.collidepoint(pygame.mouse.get_pos()):
                 name = inputbox.ask(self.window, "Your name")
                 if name:
-                    self.parent.location = GameLocation(self.parent, name)
+                    self.parent.location = GameLocation(
+                        self.parent, 
+                        name, 
+                        self.selected_character
+                    )
             elif self.exitbtn.rect.collidepoint(pygame.mouse.get_pos()):
                 sys.exit()
 
 class GameLocation(Location):
-    def __init__(self, parent, name):
+    def __init__(self, parent, name, character_img = 'img/rocket3.png'):
         Location.__init__(self, parent)
         pygame.key.set_repeat(10)
         pygame.mouse.set_visible(0)
-    
-        self.doodle = Doodle(name)
+        self.doodle = Doodle(name, character_img)
+   
+        self.doodle = Doodle(name, character_img)
         self.doodle.name = name
-    
+
         self.allsprites = pygame.sprite.Group()
         self.stars = pygame.sprite.Group()
         self.allsprites.add(self.doodle)
@@ -85,13 +148,12 @@ class GameLocation(Location):
             25, 
             str(self.star_count), 
             40, 
-            (255, 255, 0),  # Желтый цвет
-            'img/star.png'   # Иконка звезды
+            (255, 255, 0), 
+            'img/star.png'  
         )
         self.allsprites.add(self.score_sprite)
         self.allsprites.add(self.star_counter_sprite)
     
-        # self.header = Rectangle(screen_width, 50, (0,191,255,10))
         self.window.blit(self.background, (0, 0))
     
         self.jump_sound = pygame.mixer.Sound("sounds/jump.wav")
@@ -99,6 +161,8 @@ class GameLocation(Location):
         self.star_sound = pygame.mixer.Sound("sounds/star.wav") if pygame.mixer else None
     
         self.monster = None
+        self.character_img = character_img 
+
 
     def randomPlatform(self, top=True):
         x = randint(0, screen_width - platform_width)
@@ -209,9 +273,8 @@ class GameLocation(Location):
 
             self.score_sprite.setText(f"{self.doodle.name}, {int(self.doodle.score/10)}")
             self.allsprites.draw(self.window)
-            # self.window.blit(self.header, (0,0))
         else:
-            self.parent.location = GameLocation(self.parent,self.doodle.name)
+            self.parent.location = GameLocation(self.parent, self.doodle.name, self.character_img)
 
     def event(self,event):
         if event.type == KEYDOWN:

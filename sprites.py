@@ -57,13 +57,14 @@ class Monster(Sprite):
         self.move_y(randint(-5, 5))
 
 class Doodle(Sprite):
-    def __init__(self, name):
+    def __init__(self, name, character_img='img/rocket3.png'):
         super().__init__(doodle_start_position[0], doodle_start_position[1])
         self.name = name
         self.score = 0
         self.alive = 1
         self.ySpeed = 5
-        self.img_r = pygame.image.load('img/rocket3.png').convert()
+        
+        self.img_r = pygame.image.load(character_img).convert()
         self.img_l = pygame.transform.flip(self.img_r, True, False)
         self.image = self.img_r
         self.image.set_colorkey(self.image.get_at((0, 0)), RLEACCEL)
@@ -102,7 +103,10 @@ class Platform(Sprite):
     def __init__(self, x, y):
         super().__init__(x, y)
         if type(self).__name__ == "Platform":
-            self.init_image('img/platform2.png')
+            self.image = pygame.image.load('img/platform2.png').convert_alpha()
+            self.rect = self.image.get_rect()
+            self.rect.center = (self.x, self.y)
+            self.mask = pygame.mask.from_surface(self.image)
             rnd = randint(-100, 100)
             self.spring = Spring(self.x + randint(-platform_width//2 + 10, platform_width//2 - 10), 
                                self.y - 20) if rnd >= 0 else None
@@ -119,7 +123,8 @@ class Platform(Sprite):
 class MovingPlatform(Platform):
     def __init__(self, x, y):
         super().__init__(x, y)
-        self.init_image('img/moving1.png')
+        self.image = pygame.image.load('img/moving1.png').convert_alpha()
+        self.rect = self.image.get_rect(center=(self.x, self.y))
         self.way = -1
         self.xSpeed = randint(2, 6)
         self.spring = None
@@ -133,7 +138,8 @@ class MovingPlatform(Platform):
 class CrashingPlatform(Platform):
     def __init__(self, x, y):
         super().__init__(x, y)
-        self.init_image('img/broken1.png')
+        self.image = pygame.image.load('img/broken1.png').convert_alpha()
+        self.rect = self.image.get_rect(center=(self.x, self.y))
         self.ySpeed = 10
         self.crashed = 0
         self.spring = None
@@ -183,6 +189,35 @@ class Button(Sprite):
         self.image.set_colorkey(self.image.get_at((0, 0)), RLEACCEL)
         self.rect = self.image.get_rect()
         self.rect.center = (self.x, self.y)
+
+
+
+class CharacterSelectButton(Button):
+    def __init__(self, x, y, character_img):
+        try:
+            self.character_img = character_img
+            self.original_image = pygame.image.load(character_img).convert()
+            
+            scale_factor = 120 / self.original_image.get_height()
+            new_width = int(self.original_image.get_width() * scale_factor)
+            self.character_image = pygame.transform.scale(self.original_image, 
+                                                        (new_width, 120))
+            
+            self.character_image.set_colorkey(self.character_image.get_at((0, 0)), RLEACCEL)
+            self.rect = self.character_image.get_rect(center=(x, y))
+            self.full_rect = pygame.Rect(x-60, y-70, 120, 140) 
+        except:
+            self.character_image = pygame.Surface((100, 120), pygame.SRCALPHA)
+            pygame.draw.rect(self.character_image, (255, 0, 0), (0, 0, 100, 120), 2)
+            self.rect = self.character_image.get_rect(center=(x, y))
+            self.full_rect = pygame.Rect(x-60, y-70, 120, 140)
+            self.character_img = None
+    
+    def draw(self, surface):
+        surface.blit(self.character_image, self.rect)
+    
+    def collidepoint(self, pos):
+        return self.rect.collidepoint(pos)
 
 class Rectangle(pygame.Surface):
     def __init__(self, width, height, color):
